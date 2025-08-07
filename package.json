@@ -1,0 +1,63 @@
+{
+  "name": "@endur/sdk",
+  "version": "1.0.0",
+  "description": "Endur TypeScript SDK for browser and Node.js",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "endur",
+    "sdk",
+    "typescript",
+    "starknet",
+    "defi"
+  ],
+  "author": "Endur Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.11.0",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.5.3",
+    "ts-jest": "^29.3.2",
+    "tsup": "^8.0.1",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "axios": "^1.9.0",
+    "bignumber.js": "^9.3.0"
+  },
+  "peerDependencies": {
+    "starknet": "^7.6.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+} 
