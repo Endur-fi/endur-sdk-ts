@@ -1,4 +1,5 @@
 // Starknet service
+import { Account, RpcProvider } from 'starknet';
 import type { 
   CallData, 
   TransactionOptions, 
@@ -23,14 +24,14 @@ export class StarknetService {
   /**
    * Sets the provider
    */
-  setProvider(provider: any): void {
+  setProvider(provider: RpcProvider): void {
     this.provider = provider;
   }
 
   /**
    * Sets the account
    */
-  setAccount(account: any): void {
+  setAccount(account: Account): void {
     this.account = account;
   }
 

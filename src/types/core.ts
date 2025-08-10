@@ -1,10 +1,12 @@
 // Core SDK types
 
+import { Account, RpcProvider } from "starknet";
+
+export type Network = 'mainnet' | 'testnet';
+
 export interface SDKConfig {
   /** Starknet network (mainnet, testnet, etc.) */
-  network?: 'mainnet' | 'testnet' | 'devnet';
-  /** Custom RPC URL */
-  rpcUrl?: string;
+  network: Network;
   /** API base URL */
   apiUrl?: string;
   /** Request timeout in milliseconds */
@@ -13,11 +15,11 @@ export interface SDKConfig {
 
 export interface SDKOptions {
   /** Configuration object */
-  config?: SDKConfig;
+  config: SDKConfig;
   /** Starknet provider instance */
-  provider?: any;
+  provider: RpcProvider;
   /** Account instance */
-  account?: any;
+  account?: Account;
 }
 
 export interface NetworkConfig {

@@ -20,13 +20,6 @@ export class LSTService {
   }
 
   /**
-   * Gets the delegator contract address for the current network
-   */
-  private getDelegatorAddress(): string {
-    return CONTRACTS[this.network as keyof typeof CONTRACTS]?.delegator || '';
-  }
-
-  /**
    * Gets the withdrawal queue contract address for the current network
    */
   private getWithdrawalQueueAddress(): string {
@@ -166,13 +159,9 @@ export class LSTService {
   /**
    * Stakes LST tokens through the delegator
    */
-  async stake(amount: string, options?: TransactionOptions): Promise<TransactionResult> {
-    if (!isValidStarknetAddress(this.getDelegatorAddress())) {
-      throw new Error('Invalid delegator contract address');
-    }
-
+  async stake(amount: string, delegatorAddress: string, options?: TransactionOptions): Promise<TransactionResult> {
     const callData: CallData = {
-      contractAddress: this.getDelegatorAddress(),
+      contractAddress: delegatorAddress,
       entrypoint: 'stake',
       calldata: [amount],
     };
@@ -183,13 +172,9 @@ export class LSTService {
   /**
    * Unstakes LST tokens through the delegator
    */
-  async unstake(amount: string, options?: TransactionOptions): Promise<TransactionResult> {
-    if (!isValidStarknetAddress(this.getDelegatorAddress())) {
-      throw new Error('Invalid delegator contract address');
-    }
-
+  async unstake(amount: string, delegatorAddress: string, options?: TransactionOptions): Promise<TransactionResult> {
     const callData: CallData = {
-      contractAddress: this.getDelegatorAddress(),
+      contractAddress: delegatorAddress,
       entrypoint: 'unstake',
       calldata: [amount],
     };
