@@ -1,9 +1,11 @@
 // Ekubo holdings service
-import axios from 'axios';
-import { BlockIdentifier, Contract, RpcProvider } from 'starknet';
+import { BlockIdentifier, Contract } from 'starknet';
 import { BaseHoldingsService } from '../holdings';
 import type { HoldingsRequest, HoldingsResponse, ProtocolHoldings, SDKOptions } from '../../types';
 import EkuboPositionAbi from '../../abis/ekubo.position.abi.json';
+import { ApolloClient, gql, NormalizedCacheObject } from '@apollo/client';
+import getApolloClient from '../../utils/apollo-client';
+import { CONTRACTS } from '../../constants';
 
 // Ekubo configuration
 const EKUBO_CONFIG = {
@@ -11,13 +13,11 @@ const EKUBO_CONFIG = {
     xSTRKAddress: '0x28d709c875c0ceac3dce7065bec5328186dc89fe254527084d1689910954b0a',
     positionAddress: '0x02e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067',
     deploymentBlock: 165388,
-    apiUrl: 'https://mainnet-api.ekubo.org',
   },
   testnet: {
     xSTRKAddress: '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d',
     positionAddress: '0x02e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067',
     deploymentBlock: 165388,
-    apiUrl: 'https://testnet-api.ekubo.org',
   },
 };
 
@@ -33,12 +33,35 @@ interface EkuboPosition {
   };
 }
 
+const EKUBO_API_QUERY = gql`
+  query GetEkuboPositionsByUser(
+    $userAddress: String!
+    $showClosed: Boolean!
+    $toDateTime: DateTimeISO!
+  ) {
+    getEkuboPositionsByUser(
+      userAddress: $userAddress
+      showClosed: $showClosed
+      toDateTime: $toDateTime
+    ) {
+      position_id
+      timestamp
+      lower_bound
+      upper_bound
+      pool_fee
+      pool_tick_spacing
+      extension
+    }
+  }
+`;
+
 export class EkuboHoldingsService extends BaseHoldingsService {
   private config: typeof EKUBO_CONFIG.mainnet;
-
+  private apolloClient: ApolloClient<NormalizedCacheObject>;
   constructor(config: SDKOptions) {
     super(config);
     this.config = EKUBO_CONFIG[config.config.network as keyof typeof EKUBO_CONFIG] || EKUBO_CONFIG.mainnet;
+    this.apolloClient = getApolloClient(config.config.network);
   }
 
   async getHoldings(request: HoldingsRequest): Promise<HoldingsResponse> {
@@ -78,23 +101,33 @@ export class EkuboHoldingsService extends BaseHoldingsService {
 
     try {
       // Fetch positions from Ekubo API
-      const response = await axios.get(
-        `${this.config.apiUrl}/positions/${address}?showClosed=true`,
-        {
-          headers: {
-            Host: this.config.apiUrl.replace('https://', ''),
-          },
-        }
-      );
+      const blockInfo = await this.sdkConfig.provider.getBlock(blockNumber ?? "latest");
+      const resp = await this.apolloClient.query({
+        query: EKUBO_API_QUERY,
+        variables: {
+          userAddress: address.toLowerCase(),
+          showClosed: false, // Fetch both open and closed positions
+          toDateTime: new Date(blockInfo.timestamp * 1000).toISOString(),
+        },
+      });
+      const ekuboPositionsResp = resp;
+      if (
+        !ekuboPositionsResp ||
+        !ekuboPositionsResp.data ||
+        !ekuboPositionsResp.data.getEkuboPositionsByUser
+      ) {
+        throw new Error("Failed to fetch Ekubo positions data");
+      }
 
-      const positions: EkuboPosition[] = response.data?.data || [];
-
-      // Filter positions that contain xSTRK
-      const xSTRKPositions = positions.filter(
-        (position) =>
-          position.pool_key.token0 === this.config.xSTRKAddress ||
-          position.pool_key.token1 === this.config.xSTRKAddress
-      );
+      const ekuboPositions: {
+        position_id: string;
+        timestamp: string;
+        lower_bound: number;
+        upper_bound: number;
+        pool_fee: string;
+        pool_tick_spacing: string;
+        extension: string;
+      }[] = ekuboPositionsResp.data.getEkuboPositionsByUser;
 
       const positionContract = new Contract(
         EkuboPositionAbi,
@@ -103,22 +136,29 @@ export class EkuboHoldingsService extends BaseHoldingsService {
       );
 
       // Process each position
-      for (const position of xSTRKPositions) {
-        if (!position.id) continue;
+      for (const position of ekuboPositions) {
+        if (!position.position_id) continue;
+        const poolKey = {
+          token0: this.config.xSTRKAddress,
+          token1: CONTRACTS.mainnet.strk,
+          fee: position.pool_fee,
+          tick_spacing: position.pool_tick_spacing,
+          extension: position.extension,
+        };
         try {
           const result: any = await positionContract.call(
             'get_token_info',
             [
-              position.id,
-              position.pool_key,
+              position.position_id,
+              poolKey,
               {
                 lower: {
-                  mag: Math.abs(position.bounds.lower),
-                  sign: position.bounds.lower < 0 ? 1 : 0,
+                  mag: Math.abs(position.lower_bound),
+                  sign: position.lower_bound < 0 ? 1 : 0,
                 },
                 upper: {
-                  mag: Math.abs(position.bounds.upper),
-                  sign: position.bounds.upper < 0 ? 1 : 0,
+                  mag: Math.abs(position.upper_bound),
+                  sign: position.upper_bound < 0 ? 1 : 0,
                 },
               },
             ],
@@ -127,7 +167,7 @@ export class EkuboHoldingsService extends BaseHoldingsService {
             }
           );
 
-          if (this.config.xSTRKAddress === position.pool_key.token0) {
+          if (this.config.xSTRKAddress === poolKey.token0) {
             xSTRKAmount += BigInt(result.amount0.toString());
             xSTRKAmount += BigInt(result.fees0.toString());
             STRKAmount += BigInt(result.amount1.toString());
@@ -155,17 +195,5 @@ export class EkuboHoldingsService extends BaseHoldingsService {
       xSTRKAmount: xSTRKAmount.toString(),
       STRKAmount: STRKAmount.toString(),
     };
-  }
-
-  async getPositionHistory(positionId: string): Promise<any[]> {
-    try {
-      const response = await axios.get(
-        `${this.config.apiUrl}/${positionId}/history`
-      );
-      return response.data?.events || [];
-    } catch (error) {
-      console.error('Error fetching position history:', error);
-      return [];
-    }
   }
 } 

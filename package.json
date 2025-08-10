@@ -51,6 +51,7 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
+    "@apollo/client": "^3.13.9",
     "axios": "^1.9.0",
     "bignumber.js": "^9.3.0"
   },
