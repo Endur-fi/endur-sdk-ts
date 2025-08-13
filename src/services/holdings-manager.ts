@@ -5,7 +5,8 @@ import type {
   MultiProtocolHoldings,
   ProtocolType,
   ProtocolInfo,
-  SDKOptions
+  SDKOptions,
+  ProtocolHoldings
 } from '../types';
 import { LSTHoldingsService } from './protocols/lst';
 import { EkuboHoldingsService } from './protocols/ekubo';
@@ -72,9 +73,18 @@ export class HoldingsManager {
    */
   async getMultiProtocolHoldings(
     request: HoldingsRequest,
-    protocols: ProtocolType[] = ['lst', 'ekubo', 'nostraLending', 'nostraDex', 'opus', 'strkfarm', 'vesu']
+    protocols: ProtocolType[] = ['lst', 'ekubo', 'nostraLending', 'nostraDex', 'opus', 'strkfarm', 'strkfarmEkubo', 'vesu']
   ): Promise<MultiProtocolHoldings> {
-    const byProtocol: Record<string, any> = {};
+    const byProtocol: Record<ProtocolType, ProtocolHoldings> = {
+      lst: { xSTRKAmount: '0', STRKAmount: '0' },
+      ekubo: { xSTRKAmount: '0', STRKAmount: '0' },
+      nostraLending: { xSTRKAmount: '0', STRKAmount: '0' },
+      nostraDex: { xSTRKAmount: '0', STRKAmount: '0' },
+      opus: { xSTRKAmount: '0', STRKAmount: '0' },
+      strkfarm: { xSTRKAmount: '0', STRKAmount: '0' },
+      strkfarmEkubo: { xSTRKAmount: '0', STRKAmount: '0' },
+      vesu: { xSTRKAmount: '0', STRKAmount: '0' },
+    };
     let total = { xSTRKAmount: '0', STRKAmount: '0' };
 
     const promises = protocols.map(async (protocol) => {

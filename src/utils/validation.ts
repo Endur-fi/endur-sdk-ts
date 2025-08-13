@@ -8,9 +8,7 @@ export function isValidStarknetAddress(address: string): boolean {
     return false;
   }
   
-  // Starknet addresses are 66 characters long and start with 0x
-  const addressRegex = /^0x[a-fA-F0-9]{64}$/;
-  return addressRegex.test(address);
+  return address.startsWith('0x');
 }
 
 /**

@@ -13,8 +13,7 @@ function isValidStarknetAddress(address) {
   if (!address || typeof address !== "string") {
     return false;
   }
-  const addressRegex = /^0x[a-fA-F0-9]{64}$/;
-  return addressRegex.test(address);
+  return address.startsWith("0x");
 }
 function isValidHexString(hex) {
   if (!hex || typeof hex !== "string") {
@@ -2117,6 +2116,7 @@ var LSTHoldingsService = class extends BaseHoldingsService {
         timestamp: Date.now()
       };
     } catch (error) {
+      console.log("error", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
@@ -9773,8 +9773,17 @@ var HoldingsManager = class {
   /**
    * Gets holdings for multiple protocols
    */
-  async getMultiProtocolHoldings(request, protocols = ["lst", "ekubo", "nostraLending", "nostraDex", "opus", "strkfarm", "vesu"]) {
-    const byProtocol = {};
+  async getMultiProtocolHoldings(request, protocols = ["lst", "ekubo", "nostraLending", "nostraDex", "opus", "strkfarm", "strkfarmEkubo", "vesu"]) {
+    const byProtocol = {
+      lst: { xSTRKAmount: "0", STRKAmount: "0" },
+      ekubo: { xSTRKAmount: "0", STRKAmount: "0" },
+      nostraLending: { xSTRKAmount: "0", STRKAmount: "0" },
+      nostraDex: { xSTRKAmount: "0", STRKAmount: "0" },
+      opus: { xSTRKAmount: "0", STRKAmount: "0" },
+      strkfarm: { xSTRKAmount: "0", STRKAmount: "0" },
+      strkfarmEkubo: { xSTRKAmount: "0", STRKAmount: "0" },
+      vesu: { xSTRKAmount: "0", STRKAmount: "0" }
+    };
     let total = { xSTRKAmount: "0", STRKAmount: "0" };
     const promises = protocols.map(async (protocol) => {
       try {

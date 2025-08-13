@@ -49,6 +49,7 @@ export class LSTHoldingsService extends BaseHoldingsService {
         timestamp: Date.now(),
       };
     } catch (error) {
+      console.log('error', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',

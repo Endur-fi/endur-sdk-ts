@@ -51,12 +51,14 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "@apollo/client": "^3.13.9",
     "axios": "^1.9.0",
     "bignumber.js": "^9.3.0"
   },
   "peerDependencies": {
-    "starknet": "^7.6.4"
+    "starknet": "7.6.4",
+    "@apollo/client": "3.13.8",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
   },
   "engines": {
     "node": ">=18.0.0"
