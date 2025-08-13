@@ -9712,7 +9712,9 @@ var HoldingsManager = class {
           } else {
             byProtocol[protocol] = { xSTRKAmount: "0", STRKAmount: "0" };
           }
+          break;
         } catch (error) {
+          console.warn(`Error fetching  for retry: ${retry + 1} ${protocol}:`);
           retry++;
           if (retry < MAX_RETRIES3) {
             await new Promise((resolve) => setTimeout(resolve, 1e4 * retry));

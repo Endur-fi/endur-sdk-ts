@@ -100,7 +100,9 @@ export class HoldingsManager {
           } else {
             byProtocol[protocol] = { xSTRKAmount: '0', STRKAmount: '0' };
           }
+          break;
         } catch (error) { 
+          console.warn(`Error fetching  for retry: ${retry + 1} ${protocol}:`);
           retry++;
           if (retry < MAX_RETRIES) {
             await new Promise(resolve => setTimeout(resolve, 10000 * retry));
