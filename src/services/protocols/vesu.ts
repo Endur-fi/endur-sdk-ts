@@ -145,27 +145,18 @@ export class VesuHoldingsService extends BaseHoldingsService {
   }
 
   async getHoldings(request: HoldingsRequest): Promise<HoldingsResponse> {
-    try {
-      this.validateProvider();
-      this.validateAddress(request.address);
+    this.validateProvider();
+    this.validateAddress(request.address);
 
-      const { address, blockNumber } = request;
-      const holdings = await this.getVesuHoldings(address, blockNumber);
+    const { address, blockNumber } = request;
+    const holdings = await this.getVesuHoldings(address, blockNumber);
 
-      return {
-        success: true,
-        data: holdings,
-        protocol: 'vesu',
-        timestamp: Date.now(),
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        protocol: 'vesu',
-        timestamp: Date.now(),
-      };
-    }
+    return {
+      success: true,
+      data: holdings,
+      protocol: 'vesu',
+      timestamp: Date.now(),
+    };
   }
 
   private async getVesuHoldings(
@@ -229,7 +220,6 @@ export class VesuHoldingsService extends BaseHoldingsService {
     vaultConfig2: {address: string, deploymentBlock: number},
     blockNumber?: BlockIdentifier
   ): Promise<ProtocolHoldings> {
-    try {
       const isV1Deployed = this.isContractDeployed(blockNumber, vaultConfig1.deploymentBlock, vaultConfig1.maxBlock);
       const isV2Deployed = this.isContractDeployed(blockNumber, vaultConfig2.deploymentBlock);
 
@@ -260,10 +250,6 @@ export class VesuHoldingsService extends BaseHoldingsService {
         xSTRKAmount: totalBalance.toString(),
         STRKAmount: '0',
       };
-    } catch (error) {
-      console.error(`Vesu::getVaultHoldingsByType::error`, error);
-      return this.createZeroHoldings();
-    }
   }
 
   private async getCollateralHoldings(
@@ -324,7 +310,7 @@ export class VesuHoldingsService extends BaseHoldingsService {
           // Skip unknown pools
           continue;
         }
-        console.error('Error fetching Vesu collateral:', error);
+        throw error;
       }
     }
 

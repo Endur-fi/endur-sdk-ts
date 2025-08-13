@@ -35,7 +35,6 @@ export class LSTHoldingsService extends BaseHoldingsService {
   }
 
   async getHoldings(request: HoldingsRequest): Promise<HoldingsResponse> {
-    try {
       this.validateProvider();
       this.validateAddress(request.address);
 
@@ -48,15 +47,6 @@ export class LSTHoldingsService extends BaseHoldingsService {
         protocol: 'lst',
         timestamp: Date.now(),
       };
-    } catch (error) {
-      console.log('error', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        protocol: 'lst',
-        timestamp: Date.now(),
-      };
-    }
   }
 
   private async getXSTRKHoldings(

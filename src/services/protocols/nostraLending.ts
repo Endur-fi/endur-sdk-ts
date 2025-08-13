@@ -66,27 +66,18 @@ export class NostraLendingHoldingsService extends BaseHoldingsService {
   }
 
   async getHoldings(request: HoldingsRequest): Promise<HoldingsResponse> {
-    try {
-      this.validateProvider();
-      this.validateAddress(request.address);
+    this.validateProvider();
+    this.validateAddress(request.address);
 
-      const { address, blockNumber } = request;
-      const holdings = await this.getNostraHoldings(address, blockNumber);
+    const { address, blockNumber } = request;
+    const holdings = await this.getNostraHoldings(address, blockNumber);
 
-      return {
-        success: true,
-        data: holdings,
-        protocol: 'nostra',
-        timestamp: Date.now(),
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        protocol: 'nostra',
-        timestamp: Date.now(),
-      };
-    }
+    return {
+      success: true,
+      data: holdings,
+      protocol: 'nostra',
+      timestamp: Date.now(),
+    };
   }
 
   private async getNostraHoldings(

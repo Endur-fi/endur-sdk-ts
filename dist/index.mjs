@@ -2098,26 +2098,16 @@ var LSTHoldingsService = class extends BaseHoldingsService {
     this.config = LST_CONFIG[config.config.network] || LST_CONFIG.mainnet;
   }
   async getHoldings(request) {
-    try {
-      this.validateProvider();
-      this.validateAddress(request.address);
-      const { address, blockNumber } = request;
-      const holdings = await this.getXSTRKHoldings(address, blockNumber);
-      return {
-        success: true,
-        data: holdings,
-        protocol: "lst",
-        timestamp: Date.now()
-      };
-    } catch (error) {
-      console.log("error", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-        protocol: "lst",
-        timestamp: Date.now()
-      };
-    }
+    this.validateProvider();
+    this.validateAddress(request.address);
+    const { address, blockNumber } = request;
+    const holdings = await this.getXSTRKHoldings(address, blockNumber);
+    return {
+      success: true,
+      data: holdings,
+      protocol: "lst",
+      timestamp: Date.now()
+    };
   }
   async getXSTRKHoldings(address, blockNumber) {
     if (!this.isContractDeployed(blockNumber, this.config.xSTRK.deploymentBlock)) {
@@ -3826,25 +3816,16 @@ var EkuboHoldingsService = class extends BaseHoldingsService {
     this.apolloClient = getApolloClient(config.config.network);
   }
   async getHoldings(request) {
-    try {
-      this.validateProvider();
-      this.validateAddress(request.address);
-      const { address, blockNumber } = request;
-      const holdings = await this.getEkuboHoldings(address, blockNumber);
-      return {
-        success: true,
-        data: holdings,
-        protocol: "ekubo",
-        timestamp: Date.now()
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-        protocol: "ekubo",
-        timestamp: Date.now()
-      };
-    }
+    this.validateProvider();
+    this.validateAddress(request.address);
+    const { address, blockNumber } = request;
+    const holdings = await this.getEkuboHoldings(address, blockNumber);
+    return {
+      success: true,
+      data: holdings,
+      protocol: "ekubo",
+      timestamp: Date.now()
+    };
   }
   async getEkuboHoldings(address, blockNumber) {
     if (!this.isContractDeployed(blockNumber, this.config.deploymentBlock)) {
@@ -3852,77 +3833,73 @@ var EkuboHoldingsService = class extends BaseHoldingsService {
     }
     let xSTRKAmount = BigInt(0);
     let STRKAmount = BigInt(0);
-    try {
-      const blockInfo = await this.sdkConfig.provider.getBlock(blockNumber ?? "latest");
-      const resp = await this.apolloClient.query({
-        query: EKUBO_API_QUERY,
-        variables: {
-          userAddress: address.toLowerCase(),
-          showClosed: false,
-          // Fetch both open and closed positions
-          toDateTime: new Date(blockInfo.timestamp * 1e3).toISOString()
-        }
-      });
-      const ekuboPositionsResp = resp;
-      if (!ekuboPositionsResp || !ekuboPositionsResp.data || !ekuboPositionsResp.data.getEkuboPositionsByUser) {
-        throw new Error("Failed to fetch Ekubo positions data");
+    const blockInfo = await this.sdkConfig.provider.getBlock(blockNumber ?? "latest");
+    const resp = await this.apolloClient.query({
+      query: EKUBO_API_QUERY,
+      variables: {
+        userAddress: address.toLowerCase(),
+        showClosed: false,
+        // Fetch both open and closed positions
+        toDateTime: new Date(blockInfo.timestamp * 1e3).toISOString()
       }
-      const ekuboPositions = ekuboPositionsResp.data.getEkuboPositionsByUser;
-      const positionContract = new Contract(
-        ekubo_position_abi_default,
-        this.config.positionAddress,
-        this.provider
-      );
-      for (const position of ekuboPositions) {
-        if (!position.position_id) continue;
-        const poolKey = {
-          token0: this.config.xSTRKAddress,
-          token1: CONTRACTS.mainnet.strk,
-          fee: position.pool_fee,
-          tick_spacing: position.pool_tick_spacing,
-          extension: position.extension
-        };
-        try {
-          const result = await positionContract.call(
-            "get_token_info",
-            [
-              position.position_id,
-              poolKey,
-              {
-                lower: {
-                  mag: Math.abs(position.lower_bound),
-                  sign: position.lower_bound < 0 ? 1 : 0
-                },
-                upper: {
-                  mag: Math.abs(position.upper_bound),
-                  sign: position.upper_bound < 0 ? 1 : 0
-                }
-              }
-            ],
+    });
+    const ekuboPositionsResp = resp;
+    if (!ekuboPositionsResp || !ekuboPositionsResp.data || !ekuboPositionsResp.data.getEkuboPositionsByUser) {
+      throw new Error("Failed to fetch Ekubo positions data");
+    }
+    const ekuboPositions = ekuboPositionsResp.data.getEkuboPositionsByUser;
+    const positionContract = new Contract(
+      ekubo_position_abi_default,
+      this.config.positionAddress,
+      this.provider
+    );
+    for (const position of ekuboPositions) {
+      if (!position.position_id) continue;
+      const poolKey = {
+        token0: this.config.xSTRKAddress,
+        token1: CONTRACTS.mainnet.strk,
+        fee: position.pool_fee,
+        tick_spacing: position.pool_tick_spacing,
+        extension: position.extension
+      };
+      try {
+        const result = await positionContract.call(
+          "get_token_info",
+          [
+            position.position_id,
+            poolKey,
             {
-              blockIdentifier: blockNumber ?? "pending"
+              lower: {
+                mag: Math.abs(position.lower_bound),
+                sign: position.lower_bound < 0 ? 1 : 0
+              },
+              upper: {
+                mag: Math.abs(position.upper_bound),
+                sign: position.upper_bound < 0 ? 1 : 0
+              }
             }
-          );
-          if (this.config.xSTRKAddress === poolKey.token0) {
-            xSTRKAmount += BigInt(result.amount0.toString());
-            xSTRKAmount += BigInt(result.fees0.toString());
-            STRKAmount += BigInt(result.amount1.toString());
-            STRKAmount += BigInt(result.fees1.toString());
-          } else {
-            xSTRKAmount += BigInt(result.amount1.toString());
-            xSTRKAmount += BigInt(result.fees1.toString());
-            STRKAmount += BigInt(result.amount0.toString());
-            STRKAmount += BigInt(result.fees0.toString());
+          ],
+          {
+            blockIdentifier: blockNumber ?? "pending"
           }
-        } catch (error) {
-          if (error.message.includes("NOT_INITIALIZED")) {
-            continue;
-          }
-          throw error;
+        );
+        if (this.config.xSTRKAddress === poolKey.token0) {
+          xSTRKAmount += BigInt(result.amount0.toString());
+          xSTRKAmount += BigInt(result.fees0.toString());
+          STRKAmount += BigInt(result.amount1.toString());
+          STRKAmount += BigInt(result.fees1.toString());
+        } else {
+          xSTRKAmount += BigInt(result.amount1.toString());
+          xSTRKAmount += BigInt(result.fees1.toString());
+          STRKAmount += BigInt(result.amount0.toString());
+          STRKAmount += BigInt(result.fees0.toString());
         }
+      } catch (error) {
+        if (error.message.includes("NOT_INITIALIZED")) {
+          continue;
+        }
+        throw error;
       }
-    } catch (error) {
-      console.error("Error fetching Ekubo positions:", error);
     }
     return {
       xSTRKAmount: xSTRKAmount.toString(),
@@ -3986,25 +3963,16 @@ var NostraLendingHoldingsService = class extends BaseHoldingsService {
     this.config = NOSTRA_CONFIG[config.config.network] || NOSTRA_CONFIG.mainnet;
   }
   async getHoldings(request) {
-    try {
-      this.validateProvider();
-      this.validateAddress(request.address);
-      const { address, blockNumber } = request;
-      const holdings = await this.getNostraHoldings(address, blockNumber);
-      return {
-        success: true,
-        data: holdings,
-        protocol: "nostra",
-        timestamp: Date.now()
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-        protocol: "nostra",
-        timestamp: Date.now()
-      };
-    }
+    this.validateProvider();
+    this.validateAddress(request.address);
+    const { address, blockNumber } = request;
+    const holdings = await this.getNostraHoldings(address, blockNumber);
+    return {
+      success: true,
+      data: holdings,
+      protocol: "nostra",
+      timestamp: Date.now()
+    };
   }
   async getNostraHoldings(address, blockNumber) {
     let xSTRKAmount = BigInt(0);
@@ -5184,25 +5152,16 @@ var NostraDexHoldingsService = class extends BaseHoldingsService {
     this.config = NOSTRA_CONFIG2[config.config.network] || NOSTRA_CONFIG2.mainnet;
   }
   async getHoldings(request) {
-    try {
-      this.validateProvider();
-      this.validateAddress(request.address);
-      const { address, blockNumber } = request;
-      const holdings = await this.getNostraHoldings(address, blockNumber);
-      return {
-        success: true,
-        data: holdings,
-        protocol: "nostra",
-        timestamp: Date.now()
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-        protocol: "nostra",
-        timestamp: Date.now()
-      };
-    }
+    this.validateProvider();
+    this.validateAddress(request.address);
+    const { address, blockNumber } = request;
+    const holdings = await this.getNostraHoldings(address, blockNumber);
+    return {
+      success: true,
+      data: holdings,
+      protocol: "nostra",
+      timestamp: Date.now()
+    };
   }
   async getNostraHoldings(address, blockNumber) {
     let xSTRKAmount = BigInt(0);
@@ -5655,25 +5614,16 @@ var OpusHoldingsService = class extends BaseHoldingsService {
     this.config = OPUS_CONFIG[config.config.network] || OPUS_CONFIG.mainnet;
   }
   async getHoldings(request) {
-    try {
-      this.validateProvider();
-      this.validateAddress(request.address);
-      const { address, blockNumber } = request;
-      const holdings = await this.getOpusHoldings(address, blockNumber);
-      return {
-        success: true,
-        data: holdings,
-        protocol: "opus",
-        timestamp: Date.now()
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-        protocol: "opus",
-        timestamp: Date.now()
-      };
-    }
+    this.validateProvider();
+    this.validateAddress(request.address);
+    const { address, blockNumber } = request;
+    const holdings = await this.getOpusHoldings(address, blockNumber);
+    return {
+      success: true,
+      data: holdings,
+      protocol: "opus",
+      timestamp: Date.now()
+    };
   }
   async getOpusHoldings(address, blockNumber) {
     if (!this.isContractDeployed(blockNumber, this.config.contract.deploymentBlock)) {
@@ -7436,25 +7386,16 @@ var STRKFarmSenseiHoldingsService = class extends BaseHoldingsService {
     this.config = STRKFARM_CONFIG[config.config.network] || STRKFARM_CONFIG.mainnet;
   }
   async getHoldings(request) {
-    try {
-      this.validateProvider();
-      this.validateAddress(request.address);
-      const { address, blockNumber } = request;
-      const holdings = await this.getSTRKFarmHoldings(address, blockNumber);
-      return {
-        success: true,
-        data: holdings,
-        protocol: "strkfarm",
-        timestamp: Date.now()
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-        protocol: "strkfarm",
-        timestamp: Date.now()
-      };
-    }
+    this.validateProvider();
+    this.validateAddress(request.address);
+    const { address, blockNumber } = request;
+    const holdings = await this.getSTRKFarmHoldings(address, blockNumber);
+    return {
+      success: true,
+      data: holdings,
+      protocol: "strkfarm",
+      timestamp: Date.now()
+    };
   }
   async getSTRKFarmHoldings(address, blockNumber) {
     let xSTRKAmount = BigInt(0);
@@ -7471,20 +7412,16 @@ var STRKFarmSenseiHoldingsService = class extends BaseHoldingsService {
     if (!this.isContractDeployed(blockNumber, this.config.contracts.xSTRKSensei.deploymentBlock)) {
       return this.createZeroHoldings();
     }
-    try {
-      const contract = new Contract(sensei_abi_default, this.config.contracts.xSTRKSensei.address, this.provider);
-      const info = await contract.call("describe_position", [address], {
-        blockIdentifier: blockNumber ?? "pending"
-      });
-      const holdings = info[1];
-      const xSTRKAmount = BigInt(holdings.deposit2.toString());
-      return {
-        xSTRKAmount: xSTRKAmount.toString(),
-        STRKAmount: "0"
-      };
-    } catch (error) {
-      return this.createZeroHoldings();
-    }
+    const contract = new Contract(sensei_abi_default, this.config.contracts.xSTRKSensei.address, this.provider);
+    const info = await contract.call("describe_position", [address], {
+      blockIdentifier: blockNumber ?? "pending"
+    });
+    const holdings = info[1];
+    const xSTRKAmount = BigInt(holdings.deposit2.toString());
+    return {
+      xSTRKAmount: xSTRKAmount.toString(),
+      STRKAmount: "0"
+    };
   }
 };
 var STRKFarmEkuboHoldingsService = class extends BaseHoldingsService {
@@ -7493,25 +7430,16 @@ var STRKFarmEkuboHoldingsService = class extends BaseHoldingsService {
     this.config = STRKFARM_CONFIG[config.config.network] || STRKFARM_CONFIG.mainnet;
   }
   async getHoldings(request) {
-    try {
-      this.validateProvider();
-      this.validateAddress(request.address);
-      const { address, blockNumber } = request;
-      const holdings = await this.getSTRKFarmHoldings(address, blockNumber);
-      return {
-        success: true,
-        data: holdings,
-        protocol: "strkfarm",
-        timestamp: Date.now()
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-        protocol: "strkfarm",
-        timestamp: Date.now()
-      };
-    }
+    this.validateProvider();
+    this.validateAddress(request.address);
+    const { address, blockNumber } = request;
+    const holdings = await this.getSTRKFarmHoldings(address, blockNumber);
+    return {
+      success: true,
+      data: holdings,
+      protocol: "strkfarm",
+      timestamp: Date.now()
+    };
   }
   async getSTRKFarmHoldings(address, blockNumber) {
     let xSTRKAmount = BigInt(0);
@@ -9584,25 +9512,16 @@ var VesuHoldingsService = class extends BaseHoldingsService {
     this.config = VESU_CONFIG[config.config.network] || VESU_CONFIG.mainnet;
   }
   async getHoldings(request) {
-    try {
-      this.validateProvider();
-      this.validateAddress(request.address);
-      const { address, blockNumber } = request;
-      const holdings = await this.getVesuHoldings(address, blockNumber);
-      return {
-        success: true,
-        data: holdings,
-        protocol: "vesu",
-        timestamp: Date.now()
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-        protocol: "vesu",
-        timestamp: Date.now()
-      };
-    }
+    this.validateProvider();
+    this.validateAddress(request.address);
+    const { address, blockNumber } = request;
+    const holdings = await this.getVesuHoldings(address, blockNumber);
+    return {
+      success: true,
+      data: holdings,
+      protocol: "vesu",
+      timestamp: Date.now()
+    };
   }
   async getVesuHoldings(address, blockNumber) {
     let xSTRKAmount = BigInt(0);
@@ -9642,34 +9561,29 @@ var VesuHoldingsService = class extends BaseHoldingsService {
     };
   }
   async getVaultHoldingsByType(address, vaultType, vaultConfig1, vaultConfig2, blockNumber) {
-    try {
-      const isV1Deployed = this.isContractDeployed(blockNumber, vaultConfig1.deploymentBlock, vaultConfig1.maxBlock);
-      const isV2Deployed = this.isContractDeployed(blockNumber, vaultConfig2.deploymentBlock);
-      if (!isV1Deployed && !isV2Deployed) {
-        return this.createZeroHoldings();
-      }
-      const vTokens = isV2Deployed ? [vaultConfig1.address, vaultConfig2.address] : [vaultConfig1.address];
-      let totalBalance = BigInt(0);
-      for (const token of vTokens) {
-        const contract = new Contract(erc4626_abi_default, token, this.provider);
-        const shares = await contract.call("balance_of", [address], {
-          blockIdentifier: blockNumber ?? "pending"
-        });
-        const assetsToken = isV2Deployed ? vaultConfig2.address : vaultConfig1.address;
-        const contractV2 = new Contract(erc4626_abi_default, assetsToken, this.provider);
-        const balance = await contractV2.call("convert_to_assets", [shares], {
-          blockIdentifier: blockNumber ?? "pending"
-        });
-        totalBalance += BigInt(balance.toString());
-      }
-      return {
-        xSTRKAmount: totalBalance.toString(),
-        STRKAmount: "0"
-      };
-    } catch (error) {
-      console.error(`Vesu::getVaultHoldingsByType::error`, error);
+    const isV1Deployed = this.isContractDeployed(blockNumber, vaultConfig1.deploymentBlock, vaultConfig1.maxBlock);
+    const isV2Deployed = this.isContractDeployed(blockNumber, vaultConfig2.deploymentBlock);
+    if (!isV1Deployed && !isV2Deployed) {
       return this.createZeroHoldings();
     }
+    const vTokens = isV2Deployed ? [vaultConfig1.address, vaultConfig2.address] : [vaultConfig1.address];
+    let totalBalance = BigInt(0);
+    for (const token of vTokens) {
+      const contract = new Contract(erc4626_abi_default, token, this.provider);
+      const shares = await contract.call("balance_of", [address], {
+        blockIdentifier: blockNumber ?? "pending"
+      });
+      const assetsToken = isV2Deployed ? vaultConfig2.address : vaultConfig1.address;
+      const contractV2 = new Contract(erc4626_abi_default, assetsToken, this.provider);
+      const balance = await contractV2.call("convert_to_assets", [shares], {
+        blockIdentifier: blockNumber ?? "pending"
+      });
+      totalBalance += BigInt(balance.toString());
+    }
+    return {
+      xSTRKAmount: totalBalance.toString(),
+      STRKAmount: "0"
+    };
   }
   async getCollateralHoldings(address, blockNumber) {
     const isSingletonDeployed = this.isContractDeployed(
@@ -9714,7 +9628,7 @@ var VesuHoldingsService = class extends BaseHoldingsService {
         if (error.message.includes("unknown-pool")) {
           continue;
         }
-        console.error("Error fetching Vesu collateral:", error);
+        throw error;
       }
     }
     return {
@@ -9780,18 +9694,26 @@ var HoldingsManager = class {
     };
     let total = { xSTRKAmount: "0", STRKAmount: "0" };
     const promises = protocols.map(async (protocol) => {
-      try {
-        const response = await this.getProtocolHoldings(protocol, request);
-        if (response.success && response.data) {
-          byProtocol[protocol] = response.data;
-          total.xSTRKAmount = (BigInt(total.xSTRKAmount) + BigInt(response.data.xSTRKAmount)).toString();
-          total.STRKAmount = (BigInt(total.STRKAmount) + BigInt(response.data.STRKAmount)).toString();
-        } else {
-          byProtocol[protocol] = { xSTRKAmount: "0", STRKAmount: "0" };
+      let retry = 0;
+      const MAX_RETRIES3 = 1;
+      while (retry < MAX_RETRIES3) {
+        try {
+          const response = await this.getProtocolHoldings(protocol, request);
+          if (response.success && response.data) {
+            byProtocol[protocol] = response.data;
+            total.xSTRKAmount = (BigInt(total.xSTRKAmount) + BigInt(response.data.xSTRKAmount)).toString();
+            total.STRKAmount = (BigInt(total.STRKAmount) + BigInt(response.data.STRKAmount)).toString();
+          } else {
+            byProtocol[protocol] = { xSTRKAmount: "0", STRKAmount: "0" };
+          }
+        } catch (error) {
+          retry++;
+          if (retry < MAX_RETRIES3) {
+            await new Promise((resolve) => setTimeout(resolve, 1e4 * retry));
+          } else {
+            throw error;
+          }
         }
-      } catch (error) {
-        console.error(`Error fetching holdings for ${protocol}:`, error);
-        byProtocol[protocol] = { xSTRKAmount: "0", STRKAmount: "0" };
       }
     });
     await Promise.all(promises);

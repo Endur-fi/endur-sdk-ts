@@ -42,7 +42,6 @@ export class STRKFarmSenseiHoldingsService extends BaseHoldingsService {
   }
 
   async getHoldings(request: HoldingsRequest): Promise<HoldingsResponse> {
-    try {
       this.validateProvider();
       this.validateAddress(request.address);
 
@@ -55,14 +54,7 @@ export class STRKFarmSenseiHoldingsService extends BaseHoldingsService {
         protocol: 'strkfarm',
         timestamp: Date.now(),
       };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        protocol: 'strkfarm',
-        timestamp: Date.now(),
-      };
-    }
+
   }
 
   private async getSTRKFarmHoldings(
@@ -91,7 +83,6 @@ export class STRKFarmSenseiHoldingsService extends BaseHoldingsService {
       return this.createZeroHoldings();
     }
 
-    try {
       const contract = new Contract(SENSEI_ABI, this.config.contracts.xSTRKSensei.address, this.provider);
       
       const info = await contract.call('describe_position', [address], {
@@ -105,9 +96,6 @@ export class STRKFarmSenseiHoldingsService extends BaseHoldingsService {
         xSTRKAmount: xSTRKAmount.toString(),
         STRKAmount: '0',
       };
-    } catch (error) {
-      return this.createZeroHoldings();
-    }
   }
 } 
 
@@ -120,7 +108,6 @@ export class STRKFarmEkuboHoldingsService extends BaseHoldingsService {
   }
 
   async getHoldings(request: HoldingsRequest): Promise<HoldingsResponse> {
-    try {
       this.validateProvider();
       this.validateAddress(request.address);
 
@@ -133,14 +120,7 @@ export class STRKFarmEkuboHoldingsService extends BaseHoldingsService {
         protocol: 'strkfarm',
         timestamp: Date.now(),
       };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        protocol: 'strkfarm',
-        timestamp: Date.now(),
-      };
-    }
+
   }
 
   private async getSTRKFarmHoldings(

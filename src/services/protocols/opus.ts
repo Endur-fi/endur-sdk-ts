@@ -31,7 +31,6 @@ export class OpusHoldingsService extends BaseHoldingsService {
   }
 
   async getHoldings(request: HoldingsRequest): Promise<HoldingsResponse> {
-    try {
       this.validateProvider();
       this.validateAddress(request.address);
 
@@ -44,14 +43,6 @@ export class OpusHoldingsService extends BaseHoldingsService {
         protocol: 'opus',
         timestamp: Date.now(),
       };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        protocol: 'opus',
-        timestamp: Date.now(),
-      };
-    }
   }
 
   private async getOpusHoldings(

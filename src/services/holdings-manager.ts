@@ -88,18 +88,26 @@ export class HoldingsManager {
     let total = { xSTRKAmount: '0', STRKAmount: '0' };
 
     const promises = protocols.map(async (protocol) => {
-      try {
-        const response = await this.getProtocolHoldings(protocol, request);
-        if (response.success && response.data) {
-          byProtocol[protocol] = response.data;
-          total.xSTRKAmount = (BigInt(total.xSTRKAmount) + BigInt(response.data.xSTRKAmount)).toString();
-          total.STRKAmount = (BigInt(total.STRKAmount) + BigInt(response.data.STRKAmount)).toString();
-        } else {
-          byProtocol[protocol] = { xSTRKAmount: '0', STRKAmount: '0' };
+      let retry = 0;
+      const MAX_RETRIES = 1;
+      while (retry < MAX_RETRIES) {
+        try {
+          const response = await this.getProtocolHoldings(protocol, request);
+          if (response.success && response.data) {
+            byProtocol[protocol] = response.data;
+            total.xSTRKAmount = (BigInt(total.xSTRKAmount) + BigInt(response.data.xSTRKAmount)).toString();
+            total.STRKAmount = (BigInt(total.STRKAmount) + BigInt(response.data.STRKAmount)).toString();
+          } else {
+            byProtocol[protocol] = { xSTRKAmount: '0', STRKAmount: '0' };
+          }
+        } catch (error) { 
+          retry++;
+          if (retry < MAX_RETRIES) {
+            await new Promise(resolve => setTimeout(resolve, 10000 * retry));
+          } else {
+            throw error;
+          }
         }
-      } catch (error) {
-        console.error(`Error fetching holdings for ${protocol}:`, error);
-        byProtocol[protocol] = { xSTRKAmount: '0', STRKAmount: '0' };
       }
     });
 

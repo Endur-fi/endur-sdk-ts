@@ -34,7 +34,6 @@ export class NostraDexHoldingsService extends BaseHoldingsService {
   }
 
   async getHoldings(request: HoldingsRequest): Promise<HoldingsResponse> {
-    try {
       this.validateProvider();
       this.validateAddress(request.address);
 
@@ -47,14 +46,6 @@ export class NostraDexHoldingsService extends BaseHoldingsService {
         protocol: 'nostra',
         timestamp: Date.now(),
       };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        protocol: 'nostra',
-        timestamp: Date.now(),
-      };
-    }
   }
 
   private async getNostraHoldings(

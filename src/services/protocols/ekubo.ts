@@ -65,7 +65,6 @@ export class EkuboHoldingsService extends BaseHoldingsService {
   }
 
   async getHoldings(request: HoldingsRequest): Promise<HoldingsResponse> {
-    try {
       this.validateProvider();
       this.validateAddress(request.address);
 
@@ -78,14 +77,6 @@ export class EkuboHoldingsService extends BaseHoldingsService {
         protocol: 'ekubo',
         timestamp: Date.now(),
       };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        protocol: 'ekubo',
-        timestamp: Date.now(),
-      };
-    }
   }
 
   private async getEkuboHoldings(
@@ -99,7 +90,6 @@ export class EkuboHoldingsService extends BaseHoldingsService {
     let xSTRKAmount = BigInt(0);
     let STRKAmount = BigInt(0);
 
-    try {
       // Fetch positions from Ekubo API
       const blockInfo = await this.sdkConfig.provider.getBlock(blockNumber ?? "latest");
       const resp = await this.apolloClient.query({
@@ -186,10 +176,6 @@ export class EkuboHoldingsService extends BaseHoldingsService {
           throw error;
         }
       }
-    } catch (error) {
-      console.error('Error fetching Ekubo positions:', error);
-      // Return zero holdings on error
-    }
 
     return {
       xSTRKAmount: xSTRKAmount.toString(),
